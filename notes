@@ -1,0 +1,22 @@
+	private static String DNA(int[] chromosome, String path, int gene) {
+		int g = gene;
+		if(g < chromosome.length - 1)
+			path += " |X|";
+		for (;g < chromosome.length - 1; g++) {
+			switch(chromosome[g]) {
+				case NORTH:
+					path += " U";
+					break;
+				case SOUTH:
+					path += " D";
+					break;
+				case EAST:
+					path += " R";
+					break;
+				case WEST:
+					path += " L";
+					break;
+			}
+		}
+		return path;
+	}
