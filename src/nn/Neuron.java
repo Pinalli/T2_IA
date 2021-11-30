@@ -11,7 +11,8 @@ public class Neuron {
         setWeights(weights);
         setFunction(0);
     }
-    
+
+
     public void setWeights(double[] weights) {
         this.weights = weights;
     }
@@ -43,6 +44,16 @@ public class Neuron {
     public double hyperbolicTangent(double v) {
         return Math.tanh(v);
     }
+    
+
+
+    public double[] getWeights() {
+        return weights;
+    }
+    public int length() {
+        return weights.length;
+    }
+
     
     public String toString() {
         return Arrays.toString(weights);

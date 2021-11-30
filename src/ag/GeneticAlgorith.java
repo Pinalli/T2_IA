@@ -30,7 +30,7 @@ public class GeneticAlgorith {
 	private int roadStones;
 
 	public GeneticAlgorith(Table table, int generations, int populationSize, int mutation) {
-        this.neuralNetwork = new NeuralNetwork(Constants.ENTRIES, Constants.HIDDEN_LAYER_SIZE, Constants.OUTPUT_LAYER_SIZE);
+        this.neuralNetwork = new NeuralNetwork(Constants.ENTRIES, Constants.BIAS, Constants.HIDDEN_LAYER_SIZE, Constants.OUTPUT_LAYER_SIZE);
 		this.roadStones = table.getRoad().size();
 		this.rnd = new Random();
 		this.table = table;
@@ -133,7 +133,10 @@ public class GeneticAlgorith {
 		System.out.println("---------------------------------------------------------------------------------");
 		System.out.println("Chromosome ID:" + id);
         neuralNetwork.setNetworkWeight(chromosome);
-        table.setNetwork(neuralNetwork);
+        table.setNetwork(
+        	neuralNetwork.getHiddenWeight(),
+        	neuralNetwork.getOutputWeight()
+        );
 		int lastStep, fitness, gene;
 		Color color = Color.BLUE;
 		Integer pos = entrance;
@@ -141,30 +144,16 @@ public class GeneticAlgorith {
 		hited = false;
 		hit = 0;
 
-
 		fitness = lastStep = gene = 0;
-
-        
-         //
-
-
-		// System.out.println(neuralNetwork);
-
-  //       System.out.println("Rede Neural - Camada de Saida: Valor de Y");
-  //       for(int i=0; i<saida.length; i++) {
-  //           System.out.println("Neuronio " + i + " : " + saida[i]);
-  //       }
-        
 
 
 		double[] entries, output;
+       	entries = table.lookAround(pos);
         while (pos != null) {
 			try { Thread.sleep(App.DELAY); } catch (Exception e) {}
+        	
         	System.out.println(neuralNetwork);
-
-        	entries = table.lookAround(pos);
 			entries[4] = table.nearestObjective(pos, manhattan(pos));
-        	table.setInputLayer(entries);
 			
 			output = neuralNetwork.propagation(entries);
 
@@ -197,8 +186,15 @@ public class GeneticAlgorith {
 					System.out.println("ESQUERDA - Moved to: " + pos);
 					break;
 			}
-			breakpoint
-			();
+
+			if(pos == null) {
+				table.clearInputLayer();
+				try { Thread.sleep(App.DELAY); } catch (Exception e) {}
+				continue;
+			}
+
+			entries = table.lookAround(pos);
+			breakpoint();
 		}
 
 

@@ -9,30 +9,34 @@ public class NeuralNetwork {
     private double[] hidden;
     private double[] output;
     private int      entries;
+    private int      bias;
 
 	/*
 	 *	Premature optimization is
 	 *	the root of all evil.
 	 *				-Donald Knuth
 	 */
-    public NeuralNetwork(int entries, int hiddenNeurons, int outputNeurons) {
+    public NeuralNetwork(int entries, int bias, int hiddenNeurons, int outputNeurons) {
         if(hiddenNeurons <= 0 || outputNeurons <= 0) {
             hiddenNeurons = 8;
             outputNeurons = 4;
         }
         hiddenLayer = new Neuron[hiddenNeurons];
         outputLayer = new Neuron[outputNeurons];
-        this.entries = entries + 1; // + bias
+        this.entries = entries;
+        this.bias = bias;
     }
     
     public void setNetworkWeight(double[] weights) {
-        int o = 0, t = this.entries;
+        int w1 = this.entries + this.bias, o = 0, t = w1;
         
-        for(int i = 0; i < hiddenLayer.length; i++, o = t, t += this.entries)
+        for(int i = 0; i < hiddenLayer.length; i++, o = t, t += w1)
             hiddenLayer[i] = new Neuron(Arrays.copyOfRange(weights, o, t));
-        t -= this.entries;
-        t += hiddenLayer.length + 1;
-        for(int i = 0; i < outputLayer.length; i++, o = t, t += hiddenLayer.length + 1)
+
+        t -= w1;
+        t += hiddenLayer.length + this.bias;
+        
+        for(int i = 0; i < outputLayer.length; i++, o = t, t += hiddenLayer.length + this.bias)
             outputLayer[i] = new Neuron(Arrays.copyOfRange(weights, o, t));
     }
     
@@ -51,8 +55,20 @@ public class NeuralNetwork {
         return output;
     }
 
-    public Neuron[] getHiddenLayer() { return hiddenLayer; }
-    public Neuron[] getOutputLayer() { return outputLayer; }
+    public double[][] getHiddenWeight() {
+        return getNeuronWeight(hiddenLayer);
+    }
+    public double[][] getOutputWeight() {
+        return getNeuronWeight(outputLayer);
+    }
+
+    private static double[][] getNeuronWeight(Neuron[] layer) {
+        double[][] weights = new double[layer.length][layer[0].length()];
+        for(int i = 0; i < layer.length; i++)
+            weights[i] = Arrays.copyOf(layer[i].getWeights(), layer[i].length());
+
+        return weights;
+    }
     
     public String toString(){
         String msg = "Pesos da rede\n";

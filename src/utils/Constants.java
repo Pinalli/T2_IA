@@ -2,6 +2,13 @@ package src.utils;
 
 public class Constants {
 
+    // Draws
+    public static final int NETWORK_X_DRAW_OFSET = 375;
+    // public static final int NETWORK_Y_DRAW_OFSET = 300; Not a good idea.
+
+
+
+
     // Will finish the application when reachs the exit
     public static final boolean LEFT_WHEN_FIND_FIRST = true;
 
@@ -23,7 +30,7 @@ public class Constants {
         ((ENTRIES + BIAS) * HIDDEN_LAYER_SIZE) + ((HIDDEN_LAYER_SIZE + BIAS) * OUTPUT_LAYER_SIZE);
 
     /*   Given delay by ms   */
-    public static final int DELAY_DEFAULT = 1000;
+    public static final int DELAY_DEFAULT = 1200;
     public static final int DELAY_MAX     = 5000; 
     public static final int DELAY_MIN     = 0; 
 

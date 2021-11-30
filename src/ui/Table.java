@@ -33,8 +33,6 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import src.nn.NeuralNetwork;
-import src.nn.Neuron;
 
 import src.utils.Constants;
 import src.App;
@@ -181,11 +179,7 @@ public class Table {
 		);
 
 		inputLayer 	= new String[Constants.ENTRIES];
-		hidden = new double[Constants.CHROMOSOME_SIZE];
-		output = new double[Constants.CHROMOSOME_SIZE];
 		Arrays.fill(inputLayer, "   ?");
-		Arrays.fill(hidden, 0.0);
-		Arrays.fill(output, 0.0);
 
 		blocks = copyArray(blank);
 	}
@@ -331,7 +325,8 @@ public class Table {
 		around[Constants.SOUTH] = lookUp(posd, posd >= tableSize);
 		around[Constants.WEST] 	= lookUp(posl, (posl/X_LENGTH) != (pos/X_LENGTH) || posl < 0);
 		around[Constants.EAST] 	= lookUp(posr, (posr/X_LENGTH) != (pos/X_LENGTH) || posr >= tableSize);
-
+		
+		setInputLayer(around);
 		return around;
 	}
 
@@ -528,58 +523,64 @@ public class Table {
 
 
 	private String[] inputLayer;
+	public void clearInputLayer() {
+		Arrays.fill(inputLayer, "   ?");
+		panel.repaint();
+	}
 	public void setInputLayer(double[] entries) {
 		for(int i = 0; i < entries.length; i++){
 			inputLayer[i] = String.valueOf(entries[i]);
 			if(inputLayer[i].length() == 3)
 				inputLayer[i] = " " + inputLayer[i];
 		}
+		panel.repaint();
 	}
-	public void drawInputLayer(Graphics g) {
-		int x = 320, y = 30, d = 10, yOffset = 40;
 
-		double[] varx = new double[] {-1.0, 0.0, 0.0, -1.0, 18.0};
+	private final String[] inputs = new String[] {"U", "R", "D", "L", "T"};
+	public void drawInputLayer(Graphics g) {
+		int x = Constants.NETWORK_X_DRAW_OFSET + 20, y = 38, d = 10, yOffset = 39;
+		
 
 		for (int i = 1; i < 6; i++) {
-			g.drawString(inputLayer[i-1], x-50, y + 6 +(yOffset*i));
+			g.drawString(inputs[i-1], x-75, y+2+(yOffset*i));
+			g.drawString(inputLayer[i-1], x-50, y+(yOffset*i));
 			drawCenteredCircle(g, true, x, y + (yOffset*i), d);
 		}
 	}
 
 	public void drawFirstConns(Graphics g) {
-		int x = 326, x2 = x+70,
-			yOffset = 40,
-			y1 = 72,
-			y2 = y1 + yOffset,
-			y3 = y2 + yOffset,
-			y4 = y3 + yOffset,
-			y5 = y4 + yOffset;
+		int x1 = Constants.NETWORK_X_DRAW_OFSET + 90, x2 = x1-75,
+			y = 90, yOffset = 43,
+			inputs = Constants.HIDDEN_LAYER_SIZE;
 
-		for(int i = 18; i < 139; i += yOffset){
-			LineArrow (g, x, y1, x2, y1 + i, Color.BLACK, 1);
-			LineArrow (g, x, y2, x2, y1 + i, Color.BLACK, 1);
-			LineArrow (g, x, y3, x2, y1 + i, Color.BLACK, 1);
-			LineArrow (g, x, y4, x2, y1 + i, Color.BLACK, 1);
-			LineArrow (g, x, y5, x2, y1 + i, Color.BLACK, 1);
-		}
+		if(hidden != null)
+			inputs = hidden.length;
+
+		for(int i = 0; i < inputs; i ++)
+			for(int j = -20, k = 0; j < 153; j += yOffset, k++)
+				if(hidden != null)
+					LineArrow (g, x1, y+(i*yOffset-3), x2, (y + j), hidden[i][k]);
+				else
+					LineArrow (g, x1, y+(i*yOffset-3), x2, (y + j), 1);
+		
 	}
 
-	private double[] hidden;
-	private double[] output;
-	public void setNetwork(NeuralNetwork neuralNetwork) {
-		// hidden = neuralNetwork.getHiddenLayer();
-		// output = neuralNetwork.getOutputLayer();
+	private double[][] hidden;
+	private double[][] output;
+	public void setNetwork(double[][] hidden, double[][] output) {
+		this.hidden = hidden;
+		this.output = output;
 	}
 
 	public void drawHiddenLayer(Graphics g) {
-		int x = 405, y = 50, d = 30, yOffset = 40;
+		int x = Constants.NETWORK_X_DRAW_OFSET + 105, y = 50, d = 30, yOffset = 40;
 
 		for(int i = 1; i < 5; i++)
 			drawCenteredCircle(g, false, x, y + (yOffset*i), d);
 	}
 
 	public void drawSecondConns(Graphics g) {
-		int x = 420, x2 = x+70,
+		int x = Constants.NETWORK_X_DRAW_OFSET + 120, x2 = x+70,
 			yOffset = 40,
 			y = 72,
 			y1 = 90,
@@ -588,16 +589,16 @@ public class Table {
 			y4 = y3 + yOffset;
 
 		for(int i = 18; i < 139; i += yOffset){
-			LineArrow (g, x, y1, x2, y + i, Color.BLACK, 1);
-			LineArrow (g, x, y2, x2, y + i, Color.BLACK, 1);
-			LineArrow (g, x, y3, x2, y + i, Color.BLACK, 1);
-			LineArrow (g, x, y4, x2, y + i, Color.BLACK, 1);
+			LineArrow (g, x, y1, x2, y + i, 1);
+			LineArrow (g, x, y2, x2, y + i, 1);
+			LineArrow (g, x, y3, x2, y + i, 1);
+			LineArrow (g, x, y4, x2, y + i, 1);
 		}
 	}
 	
 	public void drawOutputLayer(Graphics g) {
 		String[] letters = new String[] {"U", "D", "L", "R"};
-		int x = 495, y = 50, d = 25, yOffset = 40;
+		int x = Constants.NETWORK_X_DRAW_OFSET + 195, y = 50, d = 25, yOffset = 40;
 
 		for(int i = 0; i < 4; i++) {
 			drawCenteredCircle(g, false, x, y + (yOffset*(i+1)), d);
@@ -626,10 +627,13 @@ public class Table {
         ARROW_HEAD.addPoint(5, -10);
     }
 
-    public void LineArrow(Graphics g, int x, int y, int x2, int y2, Color color, int thickness) {
+    public void LineArrow(Graphics g, int x, int y, int x2, int y2, double thickness) {
         Graphics2D g2 = (Graphics2D) g;
 		AffineTransform defaultTransf = g2.getTransform();
         Stroke  defaultStroke = g2.getStroke();
+
+    	Color color = Color.BLACK;
+        
 
         //prepare variables
         AffineTransform tx2 = (AffineTransform) defaultTransf.clone();
@@ -639,7 +643,7 @@ public class Table {
 
         //prepare arrow
         g2.setColor(color);
-        g2.setStroke(new BasicStroke(thickness));
+        g2.setStroke(new BasicStroke(1));
         //draw arrow
         g2.drawLine(x, y, (int) (endX - 10 * Math.cos(angle)), (int) (endY - 10 * Math.sin(angle)));
         // tx2.translate(endX, endY);
