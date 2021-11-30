@@ -1,3 +1,5 @@
+package src.ui;
+
 import java.awt.Color;
 
 public class Block {

@@ -1,17 +1,17 @@
+package src.ag;
+
 import java.util.Scanner;
 import java.util.Random;
+import java.util.Arrays;
 import java.awt.Color;
 
-class GeneticAlgorith {
+import src.nn.NeuralNetwork;
+import src.utils.Constants;
+import src.utils.Logger;
+import src.ui.Table;
+import src.App;
 
-    /**/public static final int GENES   = 4;
-	/*-Possible genes--------------------------*/
-    /**/ public static final int NORTH 	= 0; /**/
-    /**/ public static final int SOUTH 	= 2; /**/
-    /**/ public static final int EAST 	= 1; /**/
-    /**/ public static final int WEST   = 3; /**/
-    /*-----------------------------------------*/
-
+public class GeneticAlgorith {
 
 	private int mutationRate;
 	private int generation;
@@ -21,19 +21,21 @@ class GeneticAlgorith {
 	private static int entrance;
 	private static int exit;
 
-	private int[][] population;
-	private int[][] newGeneration;
+    private static NeuralNetwork neuralNetwork;
+	private double[][] newGeneration;
+	private double[][] population;
 
 	private static Table table;
 	private static Random rnd;
 	private int roadStones;
 
 	public GeneticAlgorith(Table table, int generations, int populationSize, int mutation) {
+        this.neuralNetwork = new NeuralNetwork(Constants.ENTRIES, Constants.HIDDEN_LAYER_SIZE, Constants.OUTPUT_LAYER_SIZE);
 		this.roadStones = table.getRoad().size();
+		this.rnd = new Random();
 		this.table = table;
-		rnd = new Random();
 
-		if(!App.DISPLAY) {
+		if(!Constants.DISPLAY) {
 			logger = Logger.getInstance();
 			logger.initFile("result");
 			logger.publishLog("Generations: " + generation + "\nPopulation: " + populationSize + "\nMutation rate: " +mutation+"\n");
@@ -44,19 +46,22 @@ class GeneticAlgorith {
 		
 		if(generations == 0)
 			generations = 1000000000;
-		mutationRate = mutation;
-		this.generation = generations;
-
 		
-		population 	  = new int[populationSize][roadStones + 1];
-		newGeneration = new int[populationSize][roadStones + 1];
+		this.generation = generations;
+		this.mutationRate = mutation;
+
+        // 6 = 5 entradas + bias
+        // 4 neuronios na camada oculta
+        // 4 na camada de saída
+		population 	  = new double[populationSize][Constants.CHROMOSOME_SIZE];
+		newGeneration = new double[populationSize][Constants.CHROMOSOME_SIZE];
 
 		/*
 		 *	Generate a random population
 		 */
 		for(int i = 0; i < population.length; i++)
-			for(int j = 0; j < roadStones - 1; j++)
-				population[i][j] = rnd.nextInt(GENES);
+			for(int j = 0; j < population[0].length; j++)
+				population[i][j] = getRandom();
 
 		/*
 		 *	Run over the generations
@@ -72,7 +77,7 @@ class GeneticAlgorith {
 			population = newGeneration;
 		}
 
-		if(!App.DISPLAY) {
+		if(!Constants.DISPLAY) {
 			logger.close();
 		}
 	}
@@ -80,9 +85,9 @@ class GeneticAlgorith {
 	/*
 	 *	Used to get the most scored chromosome
 	 */
-	public static int eletism(int[][] population) {
+	public static int eletism(double[][] population) {
 		int score = population[0].length - 1;
-		int smallest = population[0][score];
+		double smallest = population[0][score];
 		int lowest = 0;
 
 		for(int i = 0; i < population.length - 1; i++) {
@@ -98,30 +103,24 @@ class GeneticAlgorith {
 	/*
 	 *	Use to randomly change a gene on a chromosome
 	 */
-	public static void mutation(int[][] population, int mutationRate) {
-		int i, size;
-		i = rnd.nextInt((population.length * mutationRate) / 100);
-		do {
-			i--;
-
-			int line = rnd.nextInt(population.length);
-			int column = rnd.nextInt(population[0].length - 2);
-			int gene = rnd.nextInt(GENES);
-
-			if(population[line][column] == gene)
-				gene = rnd.nextInt(GENES);
-
-			population[line][column] = gene;
+	public static void mutation(double[][] population, int mutationRate) {
+		int i = rnd.nextInt((population.length * mutationRate) / 100);
+		do { i--;
+			population
+				[rnd.nextInt(population.length)]
+				[rnd.nextInt(population[0].length - 2)]
+					= getRandom();
 		} while( i > 0 );
 	}
 
 	/*
 	 *	Encapsulate the walk through the genes of the population
 	 */
-	private static void fitness(int[][] population, int generation, int entrance, int exit) {
+	private static void fitness(double[][] population, int generation, int entrance, int exit) {
 		int score = population[0].length - 1;
-		for(int i = 0; i < population.length && quit; i++)
-			population[i][score] = fitness(population[i], generation, entrance, exit);
+		for(int i = 0; i < population.length && quit; i++){
+			population[i][score] = fitness(i, population[i], generation, entrance, exit);
+		}
 	}
 
 	/*
@@ -130,7 +129,11 @@ class GeneticAlgorith {
 	private static Integer hit = Integer.MAX_VALUE;
 	private static Integer fit = Integer.MAX_VALUE;
 	private static boolean hited = false;
-	private static int fitness(int[] chromosome, int generation, int entrance, int exit) {
+	private static double fitness(int id, double[] chromosome, int generation, int entrance, int exit) {
+		System.out.println("---------------------------------------------------------------------------------");
+		System.out.println("Chromosome ID:" + id);
+        neuralNetwork.setNetworkWeight(chromosome);
+        table.setNetwork(neuralNetwork);
 		int lastStep, fitness, gene;
 		Color color = Color.BLUE;
 		Integer pos = entrance;
@@ -138,44 +141,87 @@ class GeneticAlgorith {
 		hited = false;
 		hit = 0;
 
+
 		fitness = lastStep = gene = 0;
-		for(; gene < chromosome.length - 1 && pos != null && quit; gene++) {
-			lastStep = pos;
 
-			switch(chromosome[gene]) {
-				case NORTH:
+        
+         //
+
+
+		// System.out.println(neuralNetwork);
+
+  //       System.out.println("Rede Neural - Camada de Saida: Valor de Y");
+  //       for(int i=0; i<saida.length; i++) {
+  //           System.out.println("Neuronio " + i + " : " + saida[i]);
+  //       }
+        
+
+
+		double[] entries, output;
+        while (pos != null) {
+			try { Thread.sleep(App.DELAY); } catch (Exception e) {}
+        	System.out.println(neuralNetwork);
+
+        	entries = table.lookAround(pos);
+			entries[4] = table.nearestObjective(pos, manhattan(pos));
+        	table.setInputLayer(entries);
+			
+			output = neuralNetwork.propagation(entries);
+
+	        int active = activeNeuron(output);
+	        System.out.print("Selected scenario: " + "Neuronio " + active + " ");
+	        System.out.println(": " + output[active]);
+
+			switch(active) {
+				case Constants.NORTH:
 					path += " U";
-					pos = table.moveUpPos(color, pos);
+					pos = table.moveUpBPos(color, pos, true);
+					System.out.println("CIMA - Moved to: " + pos);
 					break;
 
-				case SOUTH:
+				case Constants.SOUTH:
 					path += " D";
-					pos = table.moveDownPos(color, pos);
+					pos = table.moveDownBPos(color, pos, true);
+					System.out.println("BAIXO - Moved to: " + pos);
 					break;
 
-				case EAST:
+				case Constants.EAST:
 					path += " R";
-					pos = table.moveRightPos(color, pos);
+					pos = table.moveRightBPos(color, pos, true);
+					System.out.println("DIREITA - Moved to: " + pos);
 					break;
 
-				case WEST:
+				case Constants.WEST:
 					path += " L";
-					pos = table.moveLeftPos(color, pos);
+					pos = table.moveLeftBPos(color, pos, true);
+					System.out.println("ESQUERDA - Moved to: " + pos);
 					break;
 			}
-
-			fitness += fitness(fitness, pos, gene, generation);
+			breakpoint
+			();
 		}
 
-		// System.out.println(completePath(chromosome, path, gene, fitness));
 
-		if(App.DISPLAY) {
+		if(Constants.DISPLAY) {
 			table.clear();
 			table.setMessage( message(generation, fitness) );
 		} else if (hited)
 			logger.publishLog(chromosome, generation, gene, hit);
 		
+
 		return fitness;
+	}
+
+
+	private static int activeNeuron(double[] output) {
+        double[] tmp = Arrays.copyOf(output, output.length);
+        Arrays.sort(tmp);
+
+		for(int i = 0; i < output.length; i ++)
+			if(output[i] == tmp[tmp.length-1])
+				return i;
+
+		return -1;
 	}
 
 	/*
@@ -195,14 +241,14 @@ class GeneticAlgorith {
 					try {
 						hited = true;
 						fit = hit;
-						if(App.DISPLAY){
+						if(Constants.DISPLAY){
 							table.setMessage(message(gene, generation, fitness, hit));
 		        			Thread.sleep(App.delay_f);
 						}
 	        		} catch(Exception e) { e.printStackTrace(); }
 					if(fit == 0) {
 						System.out.println("REACH SOLUTION: " + gene);
-						if(App.LEFT_WHEN_FIND_FIRST)
+						if(Constants.LEFT_WHEN_FIND_FIRST)
 							quit = false;
 	        		}
         		return 0;
@@ -229,45 +275,18 @@ class GeneticAlgorith {
             Math.abs((pos / table.X_LENGTH) - yExitCoord);
     }
 
-	// private static String completePath(int[] chromosome, String path, int gene, int fitness) {
-	// 	if(false) {
-	// 		int g = gene;
-	// 		if(g < chromosome.length - 1)
-	// 			path += " |X|";
-	// 		for (;g < chromosome.length - 1; g++) {
-	// 			switch(chromosome[g]) {
-	// 				case NORTH:
-	// 					path += " U";
-	// 					break;
-	// 				case SOUTH:
-	// 					path += " D";
-	// 					break;
-	// 				case EAST:
-	// 					path += " R";
-	// 					break;
-	// 				case WEST:
-	// 					path += " L";
-	// 					break;
-	// 			}
-	// 		}
-	// 	}
-	// 	return path + "\t F: " + fitness;
-	// }
-
-
 	/*
 	 *	Transfer a gene of a population to the new generation
 	 */
-	private static void transfer(int[][] from, int pos, int[][] to, int ps) {
-		for(int i = 0; i < from[0].length; i++) {
+	private static void transfer(double[][] from, int pos, double[][] to, int ps) {
+		for(int i = 0; i < from[0].length; i++)
 			to[ps][i] = from[pos][i];
-		}
 	}
 
 	/*
 	 *	Randomly get two possible fathers and chose the best
 	 */
-	public static int tournament(int[][] population) {
+	public static int tournament(double[][] population) {
 		int father 	= rnd.nextInt(population.length);
 		int dad 	= rnd.nextInt(population.length);
 		int score 	= population[0].length - 1;
@@ -280,24 +299,23 @@ class GeneticAlgorith {
 	/*
 	 *	Cross all population to the next level of generation
 	 */
-	private static void crossover(int[][] newGeneration, int[][] population) {
-		for(int i = 1; i < population.length; i+=1) {
+	private static void crossover(double[][] newGeneration, double[][] population) {
+		for(int i = 1; i < population.length; i++) {
 
 			int chromosome1 = tournament(population);
 			int chromosome2 = tournament(population);
 
-			for(int j=0; j < population[0].length - 1; j++) {
-				if(j < population[0].length / 2) {
-					newGeneration[i][j] = population[chromosome1][j];
-					if((i+1) < population.length)
-						newGeneration[i+1][j] = population[chromosome2][j];
-				} else {
-					newGeneration[i][j] = population[chromosome2][j];
-					if((i+1) < population.length)
-						newGeneration[i+1][j] = population[chromosome1][j];
-				}
+			for(int j=0; j < population[0].length - 1; j++) { 
+					newGeneration[i][j] = (population[chromosome1][j] + population[chromosome2][j]) / 2;
 			}
 		}
+	}
+
+	/*
+	 *	Generate double random between -1 and 1
+	 */
+	private static double getRandom() {
+		return -1 + (2) * rnd.nextDouble();
 	}
 
 	/*
@@ -313,5 +331,9 @@ class GeneticAlgorith {
 		return
 			"Generation: " + g + "\n"+
 			"Fitness: " + ( (double) f/100);
+	}
+
+	private static void breakpoint() {
+		while(App.DEBUG) {}
 	}
 }

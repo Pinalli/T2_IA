@@ -1,3 +1,5 @@
+package src.utils;
+
 import java.io.FileNotFoundException;
 import java.lang.StackTraceElement;
 import java.lang.StringBuilder;
@@ -101,7 +103,7 @@ public class Logger {
 		publishLog(Integer.toString(node));
 	}
 
-	public void publishLog(int[] chromosome, int generation, int gene, int hits) {
+	public void publishLog(double[] chromosome, int generation, int gene, int hits) {
 		publishLog(Arrays.toString(chromosome) + " -> Generation: " + generation + " -gene: " + gene + " hits: " + hits + "\n");
 	}
 	
