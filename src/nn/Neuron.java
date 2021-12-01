@@ -9,7 +9,7 @@ public class Neuron {
     
     public Neuron(double[] weights){
         setWeights(weights);
-        setFunction(0);
+        setFunction(1);
     }
 
 
@@ -37,7 +37,7 @@ public class Neuron {
         }
     }
     
-    public double logistic(double v){
+    public double logistic(double v) {
         return 1 / (1 + Math.exp(-v));
     }
     

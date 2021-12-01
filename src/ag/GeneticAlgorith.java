@@ -8,6 +8,7 @@ import java.awt.Color;
 import src.nn.NeuralNetwork;
 import src.utils.Constants;
 import src.utils.Logger;
+import src.ui.ListPanel;
 import src.ui.Table;
 import src.App;
 
@@ -25,13 +26,15 @@ public class GeneticAlgorith {
 	private double[][] newGeneration;
 	private double[][] population;
 
+	private static ListPanel listPanel;
 	private static Table table;
 	private static Random rnd;
-	private int roadStones;
+	private static int roadStones;
 
 	public GeneticAlgorith(Table table, int generations, int populationSize, int mutation) {
         this.neuralNetwork = new NeuralNetwork(Constants.ENTRIES, Constants.BIAS, Constants.HIDDEN_LAYER_SIZE, Constants.OUTPUT_LAYER_SIZE);
 		this.roadStones = table.getRoad().size();
+		this.listPanel = ListPanel.getInstance();
 		this.rnd = new Random();
 		this.table = table;
 
@@ -45,7 +48,7 @@ public class GeneticAlgorith {
 		exit = table.getExit();
 		
 		if(generations == 0)
-			generations = 1000000000;
+			generations = Integer.MAX_VALUE;
 		
 		this.generation = generations;
 		this.mutationRate = mutation;
@@ -53,22 +56,29 @@ public class GeneticAlgorith {
         // 6 = 5 entradas + bias
         // 4 neuronios na camada oculta
         // 4 na camada de saída
-		population 	  = new double[populationSize][Constants.CHROMOSOME_SIZE];
-		newGeneration = new double[populationSize][Constants.CHROMOSOME_SIZE];
+		population 	  = new double[populationSize][Constants.CHROMOSOME_SIZE + 1];
+		newGeneration = new double[populationSize][Constants.CHROMOSOME_SIZE + 1];
 
 		/*
 		 *	Generate a random population
 		 */
-		for(int i = 0; i < population.length; i++)
+		listPanel.setSize(populationSize);
+		for(int i = 0; i < population.length; i++){
 			for(int j = 0; j < population[0].length; j++)
 				population[i][j] = getRandom();
+			listPanel.add(i, population[i][populationSize-1]);
+		}
 
 		/*
 		 *	Run over the generations
 		 */
+		int eletism = 0;
 		for(int g = 1; g <= generation && quit; g++) {
-			fitness(population, g, entrance, exit);
-			transfer(population, eletism(population), newGeneration, 0);
+			fitness(population, g, entrance);
+			eletism = eletismBiggest(population);
+			transfer(population, eletism, newGeneration, 0);
+			transfer(population, eletism, newGeneration, population.length-1);
+			transfer(population, eletism, newGeneration, population.length/2);
 			crossover(newGeneration, population);
 			
 			if(rnd.nextInt(100) < mutationRate)
@@ -85,19 +95,34 @@ public class GeneticAlgorith {
 	/*
 	 *	Used to get the most scored chromosome
 	 */
-	public static int eletism(double[][] population) {
+	public static int eletismSmallest(double[][] population) {
 		int score = population[0].length - 1;
 		double smallest = population[0][score];
-		int lowest = 0;
+		int index = 0;
 
-		for(int i = 0; i < population.length - 1; i++) {
+		for(int i = 0; i < population.length; i++) {
 			if(smallest > population[i][score]) {
 				smallest = population[i][score];
-				lowest = i;
+				index = i;
 			}
 		}
 
-		return lowest;
+		return index;
+	}
+
+	public static int eletismBiggest(double[][] population) {
+		int score = population[0].length - 1;
+		double biggest = population[0][score];
+		int index = 0;
+
+		for(int i = 0; i < population.length - 1; i++) {
+			if(biggest < population[i][score]) {
+				biggest = population[i][score];
+				index = i;
+			}
+		}
+
+		return index;
 	}
 
 	/*
@@ -105,107 +130,135 @@ public class GeneticAlgorith {
 	 */
 	public static void mutation(double[][] population, int mutationRate) {
 		int i = rnd.nextInt((population.length * mutationRate) / 100);
+		int index = 0, prev = 0;
+		
+		index = eletismSmallest(population);
 		do { i--;
-			population
-				[rnd.nextInt(population.length)]
-				[rnd.nextInt(population[0].length - 2)]
-					= getRandom();
+			if(index == prev)
+				index = 1 + rnd.nextInt(population.length-2);
+
+			for(int j = 0; j < population[0].length/3; j++)
+				population
+					[index]
+					[rnd.nextInt(population[0].length - 2)]
+						= getRandom();
+			prev = index;
 		} while( i > 0 );
 	}
 
 	/*
 	 *	Encapsulate the walk through the genes of the population
 	 */
-	private static void fitness(double[][] population, int generation, int entrance, int exit) {
+	private static void fitness(double[][] population, int generation, int entrance) {
 		int score = population[0].length - 1;
-		for(int i = 0; i < population.length && quit; i++){
-			population[i][score] = fitness(i, population[i], generation, entrance, exit);
+		for(int i = 0; i < population.length && quit; i++) {
+			listPanel.setActive(i, generation);
+			population[i][score] = fitness(i, population[i], entrance);
+			listPanel.add(i, population[i][score]);
 		}
 	}
 
 	/*
 	 *	Logic to calculate how fitness a chromosome (score)
 	 */
-	private static Integer hit = Integer.MAX_VALUE;
-	private static Integer fit = Integer.MAX_VALUE;
-	private static boolean hited = false;
-	private static double fitness(int id, double[] chromosome, int generation, int entrance, int exit) {
-		System.out.println("---------------------------------------------------------------------------------");
-		System.out.println("Chromosome ID:" + id);
+	private static double fitness(int id, double[] chromosome, int entrance) {
         neuralNetwork.setNetworkWeight(chromosome);
         table.setNetwork(
         	neuralNetwork.getHiddenWeight(),
         	neuralNetwork.getOutputWeight()
         );
-		int lastStep, fitness, gene;
+
+		int coins, pedometer, looper;
 		Color color = Color.BLUE;
 		Integer pos = entrance;
 		String path = "";
-		hited = false;
-		hit = 0;
 
-		fitness = lastStep = gene = 0;
-
+		looper = pedometer = coins = 0;
+		boolean exit = false;
 
 		double[] entries, output;
-       	entries = table.lookAround(pos);
-        while (pos != null) {
-			try { Thread.sleep(App.DELAY); } catch (Exception e) {}
-        	
-        	System.out.println(neuralNetwork);
-			entries[4] = table.nearestObjective(pos, manhattan(pos));
-			
-			output = neuralNetwork.propagation(entries);
+		breakpoint();
 
+       	entries = table.lookAround(pos);
+        while (pos != null && looper < roadStones) {
+			try { Thread.sleep(App.DELAY); } catch (Exception e) {}
+			output = neuralNetwork.propagation(entries);
 	        int active = activeNeuron(output);
-	        System.out.print("Selected scenario: " + "Neuronio " + active + " ");
-	        System.out.println(": " + output[active]);
 
 			switch(active) {
 				case Constants.NORTH:
-					path += " U";
 					pos = table.moveUpBPos(color, pos, true);
-					System.out.println("CIMA - Moved to: " + pos);
 					break;
 
 				case Constants.SOUTH:
-					path += " D";
 					pos = table.moveDownBPos(color, pos, true);
-					System.out.println("BAIXO - Moved to: " + pos);
 					break;
 
 				case Constants.EAST:
-					path += " R";
 					pos = table.moveRightBPos(color, pos, true);
-					System.out.println("DIREITA - Moved to: " + pos);
 					break;
 
 				case Constants.WEST:
-					path += " L";
 					pos = table.moveLeftBPos(color, pos, true);
-					System.out.println("ESQUERDA - Moved to: " + pos);
 					break;
 			}
 
-			if(pos == null) {
-				table.clearInputLayer();
-				try { Thread.sleep(App.DELAY); } catch (Exception e) {}
-				continue;
-			}
 
+			if(pos == null) {
+				try { Thread.sleep(App.DELAY); } catch (Exception e) {}
+				table.clearInputLayer();
+				breakpoint();
+				continue;
+			} 
+
+			if(table.isExit(pos)) exit = true;
+			if(table.wasVisited(pos)) pedometer--;
+			if(table.collectCoin(pos)) coins++;
 			entries = table.lookAround(pos);
+			pedometer++;
+			looper++;
 			breakpoint();
 		}
 
-
-		if(Constants.DISPLAY) {
-			table.clear();
-			table.setMessage( message(generation, fitness) );
-		} else if (hited)
-			logger.publishLog(chromosome, generation, gene, hit);
+		double fit = fitness(pos, pedometer, coins, exit);
+		// if (fit<0) ;
 		
 
-		return fitness;
+		// if(Constants.DISPLAY) {
+			table.clear();
+		// 	table.setMessage( message(generation, fitness) );
+		// } else if (hited)
+		// 	logger.publishLog(chromosome, generation, 0, hit);
+		
+
+		return fit;
+	}
+
+
+	/*
+	 *	Calculates the fitness accordingly of some criterias:
+	 *		- Valid moviment: 1 point
+	 *		- Reaches some wall: 2 points
+	 *		- Falls from table: 10 points
+	 */
+	// Once quit turn false it closes the program.
+	private static boolean quit = true;
+	private static double biggest = 0.0;
+	private static double fitness(Integer pos, int pedometer, int bag, boolean exit) {
+		if(pos == null) return (0.9 * bag) - 3 + pedometer;
+		if(exit) {
+			if(Constants.LEFT_WHEN_FIND_FIRST)
+				quit = !quit;
+			double result = 10.0 + (1.0 * bag) + pedometer;
+			if(biggest < result){
+				biggest = result;
+				table.setStop();
+			}
+			breakpoint();
+			return result;
+		}
+
+		return (0.9 * bag) - (table.manhattan(pos)/100);
 	}
 
 
@@ -221,62 +274,12 @@ public class GeneticAlgorith {
 	}
 
 	/*
-	 *	Calculates the fitness accordingly of some criterias:
-	 *		- Valid moviment: 1 point
-	 *		- Reaches some wall: 2 points
-	 *		- Falls from table: 10 points
-	 */
-	private static boolean quit = true;
-	private static Integer fitness(int fitness, Integer pos, int gene, int generation) {
-		if(pos == null) {
-			return table.getTableSize() * 20;
-		} else {
-			int fits = manhattan(pos);
-			if(pos == exit) {
-				if(hit < fit)
-					try {
-						hited = true;
-						fit = hit;
-						if(Constants.DISPLAY){
-							table.setMessage(message(gene, generation, fitness, hit));
-		        			Thread.sleep(App.delay_f);
-						}
-	        		} catch(Exception e) { e.printStackTrace(); }
-					if(fit == 0) {
-						System.out.println("REACH SOLUTION: " + gene);
-						if(Constants.LEFT_WHEN_FIND_FIRST)
-							quit = false;
-	        		}
-        		return 0;
-			} 
-
-			if(table.isWall(pos)) {
-				hit++;
-				fits += 12 + hit;
-				return fits;
-			}
-
-			if(table.visited(pos))
-				return fits + 5;
-			
-			return fits + 1;	
-		}
-	}
-
-	public static int manhattan(int pos) {
-		int xExitCoord = table.getExit() % table.X_LENGTH;
-        int yExitCoord = table.getExit() / table.X_LENGTH;
-        return
-            Math.abs((pos % table.X_LENGTH) - xExitCoord) +
-            Math.abs((pos / table.X_LENGTH) - yExitCoord);
-    }
-
-	/*
 	 *	Transfer a gene of a population to the new generation
 	 */
 	private static void transfer(double[][] from, int pos, double[][] to, int ps) {
-		for(int i = 0; i < from[0].length; i++)
-			to[ps][i] = from[pos][i];
+		to[ps] = Arrays.copyOf(from[pos], from[pos].length);
+		// for(int i = 0; i < from[0].length; i++)
+		// 	to[ps][i] = from[pos][i];
 	}
 
 	/*
@@ -302,7 +305,7 @@ public class GeneticAlgorith {
 			int chromosome2 = tournament(population);
 
 			for(int j=0; j < population[0].length - 1; j++) { 
-					newGeneration[i][j] = (population[chromosome1][j] + population[chromosome2][j]) / 2;
+				newGeneration[i][j] = (population[chromosome1][j] + population[chromosome2][j]) / 2;
 			}
 		}
 	}

@@ -8,6 +8,7 @@ import java.io.*;
 import src.ag.GeneticAlgorith;
 import src.utils.Constants;
 import src.ui.TablePanel;
+import src.ui.ListPanel;
 import src.ui.Table;
 
 public class App {
@@ -25,14 +26,14 @@ public class App {
 		Table table = null;
 		
 		DELAY = Constants.DELAY_DEFAULT;
-		DEBUG = true;
+		DEBUG = Constants.DEBUG;
 			
 		/*  Magic happens here ------------------------ */
 		try {
 			close();
 			//Throws exception if needed
 			instructions = args[3];
-			table = init(args[0], "Genetic Algorith");
+			table = init(args[0], "Genetic Algorith + Neural Network");
 			Thread.sleep(begin);
 			new GeneticAlgorith(
 				table,
@@ -55,11 +56,15 @@ public class App {
 
 		frame = new JFrame(windowName);
 		TablePanel panel = new TablePanel();
+		ListPanel panel2 = ListPanel.getInstance();
+		panel2.setSize(new Dimension(300, 299));
 		JScrollPane scrollPane = new JScrollPane(panel);
-
+		JScrollPane scrollPane2 = new JScrollPane(panel2);
+		scrollPane2.setPreferredSize(new Dimension(300, 300));
 		frame.setSize(table.getXLength(), table.getYLength());
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		frame.add(scrollPane, BorderLayout.CENTER);
+		frame.add(scrollPane2, BorderLayout.EAST);
 		frame.setLocationRelativeTo(null);
 		frame.setVisible(true);
 

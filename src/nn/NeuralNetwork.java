@@ -35,7 +35,7 @@ public class NeuralNetwork {
 
         t -= w1;
         t += hiddenLayer.length + this.bias;
-        
+
         for(int i = 0; i < outputLayer.length; i++, o = t, t += hiddenLayer.length + this.bias)
             outputLayer[i] = new Neuron(Arrays.copyOfRange(weights, o, t));
     }

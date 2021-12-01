@@ -67,6 +67,13 @@ public class Table {
 		this.panel = panel;
 		panelAddFeatures();
 	}
+	private void panelAddFeatures() {
+		this.panel.add(delaySlider, BorderLayout.SOUTH);
+		this.panel.add(stopButton, BorderLayout.SOUTH);
+	}
+	
+
+	/* INSTANCE ------------------------------------------------------------------------------------------------------------------------*/
 
 	private static Table instance;
 
@@ -83,9 +90,10 @@ public class Table {
 		return instance = new Table(filename);
 	}
 
-	/* Constructor ---------------------------------------------------------------------------------------------------------------------*/
-
+	/* CONSTRUCTOR ------------------------------------------*/
+	
 	private Table(String filename) {
+		/* INSTANCIES ----------------------------------------------*/
 		ArrayList<String[]> fileArray = new ArrayList<String[]>();
 		File file = new File("Tables/" + filename);
 		coinBag = new LinkedList<Integer>();
@@ -96,6 +104,8 @@ public class Table {
 		message = "";
 		String line;
 
+		/* FILE HANDLER --------------------------------------------*/
+		
 		try {
 			coin = ImageIO.read(new File("src/ui/coin.jpg"));
 			fileReader = new FileReader(file);
@@ -117,6 +127,8 @@ public class Table {
 			System.exit(0);
 		}
 
+		/* INSTANCIES ----------------------------------------------*/
+
 		X_LENGTH = fileArray.get(0).length;
 		Y_LENGTH = fileArray.size();
 		
@@ -125,6 +137,8 @@ public class Table {
 
 		tableSize = X_LENGTH * Y_LENGTH;
 		String[] matriz = new String[tableSize];
+		
+		/* INTERPRET FILE ------------------------------------------*/
 
 		int count = 0;
 		for(String[] s : fileArray) {
@@ -157,6 +171,7 @@ public class Table {
 			}
 		}
 
+		/* DRAW FEATURES (BUTTON & SLIDER) -------------------------*/
 
 		if(App.DEBUG)stopButton = new JButton("Cont");
 		else stopButton = new JButton("Stop");
@@ -180,16 +195,19 @@ public class Table {
 
 		inputLayer 	= new String[Constants.ENTRIES];
 		Arrays.fill(inputLayer, "   ?");
+		activeOutputWall = false;
+		activeOutput = -1;
 
 		blocks = copyArray(blank);
 	}
 
-	private void panelAddFeatures() {
-		this.panel.add(delaySlider, BorderLayout.SOUTH);
-		this.panel.add(stopButton, BorderLayout.SOUTH);
+	public void setStop() {
+		App.DEBUG = true;
+		stopButton.setText("Cont");
 	}
 
-	/*----------------------------------------------------------------------------------------------------------------------------------*/
+
+	/* UTILS ---------------------------------------------------------------------------------------------------------------------------*/
 
 	private Block[] copyArray(Block[] blocks) {
 		return Arrays
@@ -213,9 +231,26 @@ public class Table {
 	public void clear() {
 		blocks = copyArray(blank);
 	}
+	
+	/*----------------------------------------------------------------------------------------------------------------------------------*/
 
+    public int manhattan(int pos) {
+		return manhattan(pos, getExit());    	
+    }
+
+    public int manhattan(int pos, int to) {
+        int xCoord = to % X_LENGTH;
+        int yCoord = to / X_LENGTH;
+        return
+            Math.abs((pos % X_LENGTH) - xCoord) +
+            Math.abs((pos / X_LENGTH) - yCoord);
+    }
+	
+	/* MOVES ---------------------------------------------------------------------------------------------------------------------------*/
+	
 	private Integer move(Color color, int pos, boolean refresh) {
 		if(isWall(pos) == true) {
+			activeOutputWall = true;
 			try {
 				if(refresh)
 					setWallSpot(Color.RED, pos);
@@ -238,15 +273,19 @@ public class Table {
 	 *	Move with Blocking positions (returning null) if is a wall
 	 */
 	public Integer moveUpBPos(Color color, int cur, boolean refresh) {
+		activeOutput = Constants.NORTH;
 		return validateWallMoviment(moveUpPos(color, cur, refresh));
 	}
 	public Integer moveDownBPos(Color color, int cur, boolean refresh) {
+		activeOutput = Constants.SOUTH;
 		return validateWallMoviment(moveDownPos(color, cur, refresh));
 	}
 	public Integer moveLeftBPos(Color color, int cur, boolean refresh) {
+		activeOutput = Constants.EAST;
 		return validateWallMoviment(moveLeftPos(color, cur, refresh));
 	}
 	public Integer moveRightBPos(Color color, int cur, boolean refresh) {
+		activeOutput = Constants.WEST;
 		return validateWallMoviment(moveRightPos(color, cur, refresh));
 	}
 
@@ -257,62 +296,46 @@ public class Table {
 
 	private Integer moveUpPos(Color color, int cur, boolean refresh) {
 		int pos = cur - X_LENGTH;
-		if( pos < 0 ) return null;
+		if( pos < 0 ) return outOfBoard(Constants.NORTH);
 		return move(color, pos, refresh);
 	}
 	private Integer moveDownPos(Color color, int cur, boolean refresh) {
 		int pos = cur + X_LENGTH;
-		if( pos >= tableSize ) return null;
+		if( pos >= tableSize ) return outOfBoard(Constants.SOUTH);
 		return move(color, pos, refresh);
 	}
 	private Integer moveLeftPos(Color color, int cur, boolean refresh) {
 		int pos = cur - 1;
-		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos < 0 ) return null;
+		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos < 0 ) return outOfBoard(Constants.EAST);
 		return move(color, pos, refresh);
 	}
 	private Integer moveRightPos(Color color, int cur, boolean refresh) {
 		int pos = cur + 1;
-		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos >= tableSize ) return null;
+		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos >= tableSize ) return outOfBoard(Constants.WEST);
+
 		return move(color, pos, refresh);
 	}
 
-	public double nearestObjective(int pos, int manhattan) {
-		// int nextCoin = nearestCoin(pos);
-		int nextCoin = Integer.MAX_VALUE;
+	private Integer outOfBoard(int direction) {
+		activeOutputWall = true;
+		activeOutput = direction;
+		panel.repaint();
+		return null;
+	}
+
+	public double nearestObjective(int pos) {
+		int nextCoin = nearestCoin(pos);
+		int manhattan = manhattan(pos);
 		if(nextCoin < manhattan)
 			return nextCoin;
 
-		return manhattan;
+		return - manhattan;
 	}
 
 	public int nearestCoin(int pos) {
-		double[] arnd;
 		int result = Integer.MAX_VALUE;
-
-		for(
-			int i = 3;
-				((i+pos) < tableSize && (i-pos) > 0) ||
-				result != Integer.MAX_VALUE;
-			i += 3
-		) {
-			if((i-pos) > 0)
-				result = catchCoinPos(pos-i);
-			if((i+pos) < tableSize && result != Integer.MAX_VALUE)
-				result = catchCoinPos(pos+i);
-		}
-
+		// coinBag
 		return result;
-	}
-
-	public int catchCoinPos(int pos) {
-		double[] around = lookAround(pos);
-		if (Arrays.binarySearch(around, (double) Constants.COIN) >= 0) {
-			if(around[Constants.NORTH] == Constants.COIN) 	return getUpPos(pos);
-			if(around[Constants.SOUTH] == Constants.COIN) 	return getDownPos(pos);
-			if(around[Constants.WEST] == Constants.COIN)	return getLeftPos(pos);
-			if(around[Constants.EAST] == Constants.COIN)	return getRightPos(pos);
-		}
-		return Integer.MAX_VALUE;
 	}
 
 	public double[] lookAround(int pos) {
@@ -321,11 +344,13 @@ public class Table {
 		int posd = pos + X_LENGTH;
 		int posl = pos - 1;
 		int posr = pos + 1;
+
 		around[Constants.NORTH] = lookUp(posu, posu < 0);
 		around[Constants.SOUTH] = lookUp(posd, posd >= tableSize);
 		around[Constants.WEST] 	= lookUp(posl, (posl/X_LENGTH) != (pos/X_LENGTH) || posl < 0);
 		around[Constants.EAST] 	= lookUp(posr, (posr/X_LENGTH) != (pos/X_LENGTH) || posr >= tableSize);
-		
+		around[Constants.TARGET] = nearestObjective(pos);
+
 		setInputLayer(around);
 		return around;
 	}
@@ -359,6 +384,8 @@ public class Table {
 		return pos;
 	}
 
+	/* VALIDATIONS ---------------------------------------------------------------------------------------------------------------------*/
+
 	public int 	 	getTableSize(){ return tableSize; }
 	public Integer 	getExit() 	  { return exit; }
 	public Integer 	getEntrance() { return entrance; }
@@ -370,6 +397,10 @@ public class Table {
 	public boolean isWall(int pos) { return blocks[pos].wall; }
 	public boolean isWall(int x, int y) { return isWall((y * Y_LENGTH) + x); }
 
+	public boolean isExit(int pos) {
+		return blocks[pos].label != null && blocks[pos].label.equals("S");
+	}
+	public boolean isExit(int x, int y) { return isCoin((y * Y_LENGTH) + x); }
 	public boolean isCoin(int pos) {
 		return blocks[pos].label != null && blocks[pos].label.equals("M");
 	}
@@ -396,6 +427,17 @@ public class Table {
 		panel.repaint();
 	}
 
+	public boolean wasVisited(int pos) {
+		return blocks[pos].visited;
+	}
+	public boolean collectCoin(int pos) {
+		if(blocks[pos].label != null && blocks[pos].label.equals("M")){
+			blocks[pos].label = null;
+			return true;
+		}
+		return false;
+	}
+
 	/*
 	 *	Set spot without repaint
 	 */
@@ -403,11 +445,9 @@ public class Table {
 		if(blocks[pos].wall == true)
 			throw new NoSuchFieldException("You are trying to move inside a wall.\nPOS:" + pos);
 		blocks[pos].visited = true;
-		blocks[pos].label = null;
 		blocks[pos].ball = true;
 		blocks[pos].color = color;
 	}
-
 
 
 	public void setWallSpot(Color color, int x, int y) throws NoSuchFieldException {
@@ -431,6 +471,7 @@ public class Table {
 		blocks[pos].color = color;
 		blocks[pos].visited = true;
 	}
+
 
 	/*----------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -494,14 +535,6 @@ public class Table {
 					g.drawLine(xCoord, yCoord, xCoord, (j + 1) * Constants.CELL_WIDTH + Constants.MARGIN);
 				}
 			}
-			// if (!message.equals("")) {
-			// 	int lines = 0;
-			// 	for(String msg : message.split("\n")) {
-			// 		g.drawString(msg, (Constants.MARGIN), ((Y_LENGTH + lines) * (Constants.CELL_WIDTH) + (Constants.CELL_WIDTH) + Constants.MARGIN));
-			// 		lines++;
-			// 	}
-			// }
-
 		}
 
 		g.drawLine(Constants.MARGIN, Constants.MARGIN, (X_LENGTH * Constants.CELL_WIDTH + Constants.MARGIN), (Constants.MARGIN));
@@ -522,11 +555,16 @@ public class Table {
 	}
 
 
+	private int activeOutput;
+	private boolean activeOutputWall;
 	private String[] inputLayer;
 	public void clearInputLayer() {
 		Arrays.fill(inputLayer, "   ?");
-		panel.repaint();
+		activeOutputWall = false;
+		activeOutput = -1;
+		// panel.repaint();
 	}
+
 	public void setInputLayer(double[] entries) {
 		for(int i = 0; i < entries.length; i++){
 			inputLayer[i] = String.valueOf(entries[i]);
@@ -561,7 +599,7 @@ public class Table {
 				if(hidden != null)
 					LineArrow (g, x1, y+(i*yOffset-3), x2, (y + j), hidden[i][k]);
 				else
-					LineArrow (g, x1, y+(i*yOffset-3), x2, (y + j), 1);
+					LineArrow (g, x1, y+(i*yOffset-3), x2, (y + j), -2);
 		
 	}
 
@@ -575,32 +613,40 @@ public class Table {
 	public void drawHiddenLayer(Graphics g) {
 		int x = Constants.NETWORK_X_DRAW_OFSET + 105, y = 50, d = 30, yOffset = 40;
 
-		for(int i = 1; i < 5; i++)
+		for(int i = 1; i <= Constants.HIDDEN_LAYER_SIZE; i++)
 			drawCenteredCircle(g, false, x, y + (yOffset*i), d);
 	}
 
 	public void drawSecondConns(Graphics g) {
-		int x = Constants.NETWORK_X_DRAW_OFSET + 120, x2 = x+70,
-			yOffset = 40,
-			y = 72,
-			y1 = 90,
-			y2 = y1 + yOffset,
-			y3 = y2 + yOffset,
-			y4 = y3 + yOffset;
+		int x1 = Constants.NETWORK_X_DRAW_OFSET + 185, x2 = x1-73,
+			y = 90, yOffset = 40,
+			inputs = Constants.OUTPUT_LAYER_SIZE,
+			hiddenConnections = Constants.HIDDEN_LAYER_SIZE * yOffset;
 
-		for(int i = 18; i < 139; i += yOffset){
-			LineArrow (g, x, y1, x2, y + i, 1);
-			LineArrow (g, x, y2, x2, y + i, 1);
-			LineArrow (g, x, y3, x2, y + i, 1);
-			LineArrow (g, x, y4, x2, y + i, 1);
-		}
+		if(hidden != null)
+			inputs = output.length;
+
+		for(int i = 0; i < inputs; i ++)
+			for(int j = 0, k = 0; j < hiddenConnections; j += yOffset, k++)
+				if(output != null)
+					LineArrow (g, x1, y+(i*yOffset-3), x2, (y + j), output[i][k]);
+				else
+					LineArrow (g, x1, y+(i*yOffset-3), x2, (y + j), -2);
 	}
 	
-	public void drawOutputLayer(Graphics g) {
-		String[] letters = new String[] {"U", "D", "L", "R"};
-		int x = Constants.NETWORK_X_DRAW_OFSET + 195, y = 50, d = 25, yOffset = 40;
 
+	public void drawOutputLayer(Graphics g) {
+		String[] letters = new String[] {"U", "L", "D", "R"};
+		int x = Constants.NETWORK_X_DRAW_OFSET + 195, y = 50, d = 25, yOffset = 40;
+		
 		for(int i = 0; i < 4; i++) {
+			if(i == activeOutput) {
+				if (activeOutputWall) g.setColor(Color.RED);
+				else g.setColor(Color.GREEN);
+				drawCenteredCircle(g, true, x, y + (yOffset*(i+1)), d);
+				g.drawString(letters[i], x-5, y + 9 +(yOffset*(i+1)));
+				g.setColor(Color.BLACK);
+			}
 			drawCenteredCircle(g, false, x, y + (yOffset*(i+1)), d);
 			g.drawString(letters[i], x-5, y + 9 +(yOffset*(i+1)));
 		}
@@ -627,12 +673,24 @@ public class Table {
         ARROW_HEAD.addPoint(5, -10);
     }
 
-    public void LineArrow(Graphics g, int x, int y, int x2, int y2, double thickness) {
+    public void LineArrow(Graphics g, int x, int y, int x2, int y2, double range) {
         Graphics2D g2 = (Graphics2D) g;
 		AffineTransform defaultTransf = g2.getTransform();
         Stroke  defaultStroke = g2.getStroke();
+        Color color = Color.BLACK;
+        int thickness = 1;
 
-    	Color color = Color.BLACK;
+        if 		(range == -2) color = Constants.NETWORK_AXONIO_DEFAULT;
+        else if (range < 0)	  color = Constants.NETWORK_AXONIO_NEGATIVE;
+        else 				  color = Constants.NETWORK_AXONIO_POSITIVE;
+
+        double rangex = Math.abs(range);
+        if 		(  rangex == 2  ) thickness = 1;
+        else if (rangex < 0.3333) thickness = 1;
+        else if (rangex < 0.6666) thickness = 2;
+    	else 					  thickness = 3;
+
+
         
 
         //prepare variables
@@ -643,7 +701,7 @@ public class Table {
 
         //prepare arrow
         g2.setColor(color);
-        g2.setStroke(new BasicStroke(1));
+        g2.setStroke(new BasicStroke(thickness));
         //draw arrow
         g2.drawLine(x, y, (int) (endX - 10 * Math.cos(angle)), (int) (endY - 10 * Math.sin(angle)));
         // tx2.translate(endX, endY);
