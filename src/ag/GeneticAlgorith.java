@@ -250,15 +250,17 @@ public class GeneticAlgorith {
 			if(Constants.LEFT_WHEN_FIND_FIRST)
 				quit = !quit;
 			double result = 10.0 + (1.0 * bag) + pedometer;
-			if(biggest < result){
+			if(biggest < result) {
+				table.setMessage(bag, result);
 				biggest = result;
 				table.setStop();
 			}
+			
 			breakpoint();
 			return result;
 		}
 
-		return (0.9 * bag) - (table.manhattan(pos)/100);
+		return (0.9 * bag) - (table.manhattan(pos)/100) + pedometer;
 	}
 
 

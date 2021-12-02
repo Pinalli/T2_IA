@@ -173,7 +173,7 @@ public class Table {
 
 		/* DRAW FEATURES (BUTTON & SLIDER) -------------------------*/
 
-		if(App.DEBUG)stopButton = new JButton("Cont");
+		if(App.DEBUG)stopButton = new JButton("Play");
 		else stopButton = new JButton("Stop");
 		stopButton.addActionListener(
 			new ActionListener() {
@@ -406,13 +406,9 @@ public class Table {
 	}
 	public boolean isCoin(int x, int y) { return isCoin((y * Y_LENGTH) + x); }
 
-	public void setMessage(String message) {
-		this.message = message;
+	public void setMessage(int coins, double result) {
+		this.message = "Collected coins: " + coins + " Fitness: " + result;
 		panel.repaint();
-	}
-
-	public void setMessageWR(String message) {
-		this.message = message;
 	}
 
 	public void setSpot(Color color, int x, int y) throws NoSuchFieldException {
@@ -535,6 +531,15 @@ public class Table {
 					g.drawLine(xCoord, yCoord, xCoord, (j + 1) * Constants.CELL_WIDTH + Constants.MARGIN);
 				}
 			}
+		}
+
+
+		if (!message.equals("")) {
+			g.drawString(
+				message,
+				(Constants.MARGIN*4),
+				((Y_LENGTH + 1) * (Constants.CELL_WIDTH) + (Constants.CELL_WIDTH) + (Constants.MARGIN)));
+			this.message = "";
 		}
 
 		g.drawLine(Constants.MARGIN, Constants.MARGIN, (X_LENGTH * Constants.CELL_WIDTH + Constants.MARGIN), (Constants.MARGIN));

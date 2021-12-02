@@ -26,7 +26,7 @@ public class NeuralNetwork {
         this.entries = entries;
         this.bias = bias;
     }
-    
+
     public void setNetworkWeight(double[] weights) {
         int w1 = this.entries + this.bias, o = 0, t = w1;
         
@@ -40,14 +40,14 @@ public class NeuralNetwork {
             outputLayer[i] = new Neuron(Arrays.copyOfRange(weights, o, t));
     }
     
-    public double[] propagation(double[] x) {
-        if(x == null) return null;
+    public double[] propagation(double[] entries) {
+        if(entries == null) return null;
         
         this.hidden = new double[hiddenLayer.length];
         this.output = new double[outputLayer.length];
         
         for(int i=0; i < hiddenLayer.length; i++)
-            hidden[i] = hiddenLayer[i].f(x);
+            hidden[i] = hiddenLayer[i].f(entries);
 
         for(int i=0; i<outputLayer.length; i++)
             output[i] = outputLayer[i].f(hidden);

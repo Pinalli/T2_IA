@@ -31,7 +31,7 @@ public class Neuron {
 
         v = v + weights[i];  //bias
         
-        switch(this.function){
+        switch(this.function) {
             case 1: return hyperbolicTangent(v);
             default: return logistic(v);
         }

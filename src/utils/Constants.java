@@ -12,7 +12,7 @@ public class Constants {
 
     // JFrame draw parameters
     public static final int NETWORK_X_DRAW_OFSET = 370;
-    public static final int NETWORK_Y_DRAW_OFSET = 30; // Not a good idea.
+    public static final int NETWORK_Y_DRAW_OFSET = 30;
     /*--------------------------------------------------------------------------------*/
     public static final boolean DISPLAY = true; // Creates JFRAME or just print on log
     public static Integer WINDOW_HEIGHT;        // table square size
