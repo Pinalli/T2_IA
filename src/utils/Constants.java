@@ -52,11 +52,11 @@ public class Constants {
 
 
     // Maze interpretation
-    public static final int FREE 	= 0;
-    public static final int WALL 	=-1;
-    public static final int COIN 	= 2;
-    public static final int EXIT 	= 5;
-    public static final int OUT    	=-5;
+    public static final int FREE 	=   7;
+    public static final int WALL 	=  -3;
+    public static final int COIN 	=  10;
+    public static final int EXIT 	=  15;
+    public static final int OUT    	= -10;
 
 
 }

@@ -228,7 +228,9 @@ public class Table {
 		return copyArray(blank);
 	}
 
-	public void clear() {
+	public void clear(int[] walkThrough) {
+		Arrays.stream(walkThrough)
+			.forEach(i -> blocks[i].visited = false);
 		blocks = copyArray(blank);
 	}
 	
@@ -247,8 +249,8 @@ public class Table {
     }
 	
 	/* MOVES ---------------------------------------------------------------------------------------------------------------------------*/
-	
-	private Integer move(Color color, int pos, boolean refresh) {
+
+	public Integer move(Color color, int pos, boolean refresh) {
 		if(isWall(pos) == true) {
 			activeOutputWall = true;
 			try {
@@ -272,21 +274,21 @@ public class Table {
 	/*
 	 *	Move with Blocking positions (returning null) if is a wall
 	 */
-	public Integer moveUpBPos(Color color, int cur, boolean refresh) {
+	public Integer moveUpBPos(int cur) {
 		activeOutput = Constants.NORTH;
-		return validateWallMoviment(moveUpPos(color, cur, refresh));
+		return validateWallMoviment(upPos(cur));
 	}
-	public Integer moveDownBPos(Color color, int cur, boolean refresh) {
+	public Integer moveDownBPos(int cur) {
 		activeOutput = Constants.SOUTH;
-		return validateWallMoviment(moveDownPos(color, cur, refresh));
+		return validateWallMoviment(downPos(cur));
 	}
-	public Integer moveLeftBPos(Color color, int cur, boolean refresh) {
+	public Integer moveLeftBPos(int cur) {
 		activeOutput = Constants.EAST;
-		return validateWallMoviment(moveLeftPos(color, cur, refresh));
+		return validateWallMoviment(leftPos(cur));
 	}
-	public Integer moveRightBPos(Color color, int cur, boolean refresh) {
+	public Integer moveRightBPos(int cur) {
 		activeOutput = Constants.WEST;
-		return validateWallMoviment(moveRightPos(color, cur, refresh));
+		return validateWallMoviment(rightPos(cur));
 	}
 
 	private Integer validateWallMoviment(Integer pos) {
@@ -294,25 +296,47 @@ public class Table {
 		return pos;
 	}
 
-	private Integer moveUpPos(Color color, int cur, boolean refresh) {
+	private Integer upPos(int cur) {
 		int pos = cur - X_LENGTH;
 		if( pos < 0 ) return outOfBoard(Constants.NORTH);
+		return pos;
+
+	}
+	private Integer downPos(int cur) {
+		int pos = cur + X_LENGTH;
+		if( pos >= tableSize ) return outOfBoard(Constants.SOUTH);
+		return pos;
+
+	}
+	private Integer leftPos(int cur) {
+		int pos = cur - 1;
+		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos < 0 ) return outOfBoard(Constants.EAST);
+		return pos;
+	}
+	private Integer rightPos(int cur) {
+		int pos = cur + 1;
+		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos >= tableSize ) return outOfBoard(Constants.WEST);
+		return pos;
+	}
+
+	private Integer moveUpPos(Color color, int cur, boolean refresh) {
+		Integer pos = upPos(cur);
+		if(pos == null) return null;
 		return move(color, pos, refresh);
 	}
 	private Integer moveDownPos(Color color, int cur, boolean refresh) {
-		int pos = cur + X_LENGTH;
-		if( pos >= tableSize ) return outOfBoard(Constants.SOUTH);
+		Integer pos = downPos(cur);
+		if(pos == null) return null;
 		return move(color, pos, refresh);
 	}
 	private Integer moveLeftPos(Color color, int cur, boolean refresh) {
-		int pos = cur - 1;
-		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos < 0 ) return outOfBoard(Constants.EAST);
+		Integer pos = leftPos(cur);
+		if(pos == null) return null;
 		return move(color, pos, refresh);
 	}
 	private Integer moveRightPos(Color color, int cur, boolean refresh) {
-		int pos = cur + 1;
-		if( (pos/X_LENGTH) != (cur/X_LENGTH) || pos >= tableSize ) return outOfBoard(Constants.WEST);
-
+		Integer pos = rightPos(cur);
+		if(pos == null) return null;
 		return move(color, pos, refresh);
 	}
 
@@ -324,18 +348,7 @@ public class Table {
 	}
 
 	public double nearestObjective(int pos) {
-		int nextCoin = nearestCoin(pos);
-		int manhattan = manhattan(pos);
-		if(nextCoin < manhattan)
-			return nextCoin;
-
-		return - manhattan;
-	}
-
-	public int nearestCoin(int pos) {
-		int result = Integer.MAX_VALUE;
-		// coinBag
-		return result;
+		return - (manhattan(pos)/2);
 	}
 
 	public double[] lookAround(int pos) {
@@ -503,14 +516,16 @@ public class Table {
 				yCoord = j * Constants.CELL_WIDTH + Constants.MARGIN;
 				if (j != 0) { count += X_LENGTH; }
 				if (blocks[count].label != null) {
-					if(blocks[count].label.equals("M")) {
-						xDotBase = i * Constants.CELL_WIDTH + Constants.MARGIN + Constants.DOT_MARGIN;
-						yDotBase = j * Constants.CELL_WIDTH + Constants.MARGIN + Constants.DOT_MARGIN;
-						g.drawImage(coin, xDotBase-4, yDotBase-4, Constants.DOT_SIZE+10, Constants.DOT_SIZE+10, null);
-					} else {
-						g.setFont(font);
-						g.drawString(blocks[count].label, (i * (Constants.CELL_WIDTH) + (Constants.CELL_WIDTH/3) + Constants.MARGIN), (j * (Constants.CELL_WIDTH) + (Constants.CELL_WIDTH) + Constants.MARGIN));
-					} 
+					try {
+						if(blocks[count].label.equals("M")) {
+							xDotBase = i * Constants.CELL_WIDTH + Constants.MARGIN + Constants.DOT_MARGIN;
+							yDotBase = j * Constants.CELL_WIDTH + Constants.MARGIN + Constants.DOT_MARGIN;
+							g.drawImage(coin, xDotBase-4, yDotBase-4, Constants.DOT_SIZE+10, Constants.DOT_SIZE+10, null);
+						} else {
+							g.setFont(font);
+							g.drawString(blocks[count].label, (i * (Constants.CELL_WIDTH) + (Constants.CELL_WIDTH/3) + Constants.MARGIN), (j * (Constants.CELL_WIDTH) + (Constants.CELL_WIDTH) + Constants.MARGIN));
+						}
+					} catch (Exception e) {}
 				}
 				if (blocks[count].ball == true) {
 					xDotBase = i * Constants.CELL_WIDTH + Constants.MARGIN + Constants.DOT_MARGIN;

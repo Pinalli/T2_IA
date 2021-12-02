@@ -63,7 +63,7 @@ public class GeneticAlgorith {
 		 *	Generate a random population
 		 */
 		listPanel.setSize(populationSize);
-		for(int i = 0; i < population.length; i++){
+		for(int i = 0; i < population.length; i++) {
 			for(int j = 0; j < population[0].length; j++)
 				population[i][j] = getRandom();
 			listPanel.add(i, population[i][populationSize-1]);
@@ -168,6 +168,7 @@ public class GeneticAlgorith {
         	neuralNetwork.getOutputWeight()
         );
 
+		int[] walkThrough = new int[roadStones];
 		int coins, pedometer, looper;
 		Color color = Color.BLUE;
 		Integer pos = entrance;
@@ -184,22 +185,23 @@ public class GeneticAlgorith {
 			try { Thread.sleep(App.DELAY); } catch (Exception e) {}
 			output = neuralNetwork.propagation(entries);
 	        int active = activeNeuron(output);
+	        walkThrough[looper] = pos;
 
 			switch(active) {
 				case Constants.NORTH:
-					pos = table.moveUpBPos(color, pos, true);
+					pos = table.moveUpBPos(pos);
 					break;
 
 				case Constants.SOUTH:
-					pos = table.moveDownBPos(color, pos, true);
+					pos = table.moveDownBPos(pos);
 					break;
 
 				case Constants.EAST:
-					pos = table.moveRightBPos(color, pos, true);
+					pos = table.moveRightBPos(pos);
 					break;
 
 				case Constants.WEST:
-					pos = table.moveLeftBPos(color, pos, true);
+					pos = table.moveLeftBPos(pos);
 					break;
 			}
 
@@ -217,15 +219,16 @@ public class GeneticAlgorith {
 			entries = table.lookAround(pos);
 			pedometer++;
 			looper++;
+			table.move(color, pos, true);
 			breakpoint();
 		}
 
-		double fit = fitness(pos, pedometer, coins, exit);
+		double fit = fitness(pos, pedometer, coins, exit, walkThrough);
 		// if (fit<0) ;
 		
 
 		// if(Constants.DISPLAY) {
-			table.clear();
+			table.clear(walkThrough);
 		// 	table.setMessage( message(generation, fitness) );
 		// } else if (hited)
 		// 	logger.publishLog(chromosome, generation, 0, hit);
@@ -244,7 +247,7 @@ public class GeneticAlgorith {
 	// Once quit turn false it closes the program.
 	private static boolean quit = true;
 	private static double biggest = 0.0;
-	private static double fitness(Integer pos, int pedometer, int bag, boolean exit) {
+	private static double fitness(Integer pos, int pedometer, int bag, boolean exit, int[] walkThrough) {
 		if(pos == null) return (0.9 * bag) - 3 + pedometer;
 		if(exit) {
 			if(Constants.LEFT_WHEN_FIND_FIRST)
